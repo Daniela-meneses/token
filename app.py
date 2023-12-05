@@ -5,7 +5,7 @@ from fastapi.security.http import HTTPAuthorizationCredentials
 app = FastAPI()
 security = HTTPBearer()
 
-@app.get('/')
+@app.get('/docs')
 def read_root(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
 
