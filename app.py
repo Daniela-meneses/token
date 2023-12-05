@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
 
 app = FastAPI()
-
-securityBearer = HTTPBearer()
+security = HTTPBearer()
 
 @app.get('/')
-def route(credentials: HTTPAuthorizationCredentials = Depends(securityBearer)):
+def read_root(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
 
     if token == "1234":
