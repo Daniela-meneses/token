@@ -1,43 +1,49 @@
-from fastapi import FastAPI, Depends, status
-from fastapi.security import HTTPBasicCredentials, HTTPBasic, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBasic
 from fastapi.responses import JSONResponse
 import sqlite3
+import hashlib
+import secrets
+from datetime import datetime
 
 app = FastAPI()
 
 security_basic = HTTPBasic()
 security_bearer = HTTPBearer()
 
-# Función para abrir y cerrar la conexión en cada solicitud
 def get_db():
     db = sqlite3.connect("sql/usuario.db")
     db.row_factory = sqlite3.Row
     yield db
     db.close()
 
-# Middleware para manejar la conexión a la base de datos
 @app.middleware("http")
 async def db_middleware(request, call_next, db: sqlite3.Connection = Depends(get_db)):
     request.state.db = db
     response = await call_next(request)
-    return response
+    return response 
 
-# Endpoint para la autenticación básica y validar token Bearer
 @app.get("/")
 def index(credentials: HTTPBasicCredentials = Depends(security_basic), db: sqlite3.Connection = Depends(get_db)):
     email = credentials.username
     cursor = db.cursor()
     
-    # Lógica para la autenticación básica
     query_basic = "SELECT * FROM usuario WHERE email = ?"
     cursor.execute(query_basic, (email,))
     user = cursor.fetchone()
     
-    if user and credentials.password == user["password1"]:
-        return {"auth": True, "token": user["token"]}
+    if user and hashlib.md5(credentials.password.encode()).hexdigest() == user["password1"]:
+        new_token = secrets.token_urlsafe(12)
+        
+        timestamp = str(datetime.now())
+        update_query = "UPDATE usuario SET token = ?, timestamp1 = ? WHERE email = ?"
+        cursor.execute(update_query, (new_token, timestamp, email))
+        db.commit()
+
+        return {"auth": True, "token": new_token}
     
-    # Credenciales no válidas
-    return JSONResponse(content={"auth": False, "detail": "Invalid credentials"}, status_code=status.HTTP_401_UNAUTHORIZED)
+    return JSONResponse(content={"auth": False, "detail": "Invalid credentials"})
 
 @app.get("/token")
 def validate_token(credentials: HTTPAuthorizationCredentials = Depends(security_bearer), db: sqlite3.Connection = Depends(get_db)):
@@ -51,4 +57,4 @@ def validate_token(credentials: HTTPAuthorizationCredentials = Depends(security_
     if user:
         return {"message": "Token válido y autorizado"}
     else:
-        return {"error": "Token inválido"}, status.HTTP_401_UNAUTHORIZED
+        return {"error": "Token inválido"}

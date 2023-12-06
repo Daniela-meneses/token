@@ -7,4 +7,4 @@ CREATE TABLE usuario (
 );
 
 INSERT INTO usuario (email, password1, token, timestamp1, estado)
-VALUES ('juan@example.com', 'password123', 'xyz123', "60", 'activo');
+VALUES ('juan@example.com', '81dc9bdb52d04dc20036dbd8313ed055', 'xyz123', "60", 'activo');
